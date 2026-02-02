@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Promise for Betu</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Dancing+Script:wght@600&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --cream: #faf7f2;
+            --pink: #f4dcd6;
+            --baby-pink: #fce7f3;
+            --gold: #c5a059;
+            --text: #4a3f35;
+            --dark-blue: #1a1a2e;
+        }
+
+        /* Fluid Typography */
+        html {
+            font-size: clamp(14px, 2vw, 18px);
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--cream);
+            color: var(--text);
+            font-family: 'Quicksand', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Paper Texture Overlay */
+        .paper-texture::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.05;
+            background-image: url("https://www.transparenttextures.com/patterns/creampaper.png");
+            z-index: 9999;
+        }
+
+        h1, h2, h3 { font-family: 'Dancing Script', cursive; }
+        .handwritten { font-family: 'Caveat', cursive; }
+
+        /* Custom Scroll Progress */
+        #scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(to right, var(--pink), var(--gold));
+            width: 0%;
+            z-index: 1000;
+            transition: width 0.1s ease-out;
+        }
+
+        /* 3D Finger Container */
+        .finger-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .finger {
+            width: 60px;
+            height: 250px;
+            background: linear-gradient(to right, #f7d5c0 0%, #e0b094 50%, #f7d5c0 100%);
+            border-radius: 30px 30px 10px 10px;
+            box-shadow: inset 0 -20px 40px rgba(0,0,0,0.1), 10px 20px 30px rgba(0,0,0,0.15);
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+
+        .finger::after { /* Nail */
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 35px;
+            height: 45px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 15px 15px 5px 5px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #paper-ring {
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+            pointer-events: none;
+            transition: top 2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .ring-on { top: 120px !important; }
+
+        .poem-line {
+            opacity: 0.3;
+            transition: all 0.5s ease;
+            cursor: pointer;
+            padding: 5px 0;
+            border-left: 2px solid transparent;
+        }
+
+        .poem-line.active {
+            opacity: 1;
+            color: var(--gold);
+            transform: translateX(10px);
+            border-left: 2px solid var(--gold);
+        }
+
+        .polaroid {
+            background: white;
+            padding: 1rem 1rem 2.5rem 1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        .polaroid:hover {
+            transform: scale(1.05) rotate(0deg) !important;
+            z-index: 10;
+        }
+
+        .garden-container {
+            background: rgba(244, 220, 214, 0.15);
+            border: 2px dashed var(--pink);
+            border-radius: 24px;
+            min-height: 350px;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+        }
+
+        .tulip-sanctuary {
+            background: linear-gradient(to bottom, #fff5f7, #fce7f3);
+            border: 2px solid #f9a8d4;
+        }
+
+        /* Music Visualizer */
+        .visualizer-bar {
+            width: 3px;
+            background: var(--gold);
+            margin: 0 1px;
+            height: 5px;
+            transition: height 0.1s ease;
+        }
+
+        .animating .visualizer-bar {
+            animation: bounce 0.6s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { height: 5px; }
+            50% { height: 20px; }
+        }
+
+        .petal { position: fixed; pointer-events: none; z-index: 2000; }
+
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease-out; }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        .flash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 3000; opacity: 0; pointer-events: none;
+        }
+        .flash-active { animation: flash-anim 1s ease-out; }
+        @keyframes flash-anim { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* Jar Styles */
+        #love-jar {
+            width: 150px;
+            height: 180px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 3px solid white;
+            border-radius: 20px 20px 60px 60px;
+            position: relative;
+            margin: 0 auto;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .floating-heart {
+            position: absolute;
+            animation: float-up 3s ease-out forwards;
+        }
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1.5); opacity: 0; }
+        }
+
+        /* Scratch Card */
+        #scratch-container {
+            width: 300px;
+            height: 150px;
+            position: relative;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            cursor: crosshair;
+        }
+        #scratch-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 2;
+        }
+        .scratch-reveal-text {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            z-index: 1;
+        }
+
+        /* Melody Grid */
+        .melody-tile {
+            aspect-ratio: 1;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--pink);
+            transition: all 0.2s;
+        }
+        .melody-tile:active {
+            background: var(--gold);
+            transform: scale(0.9);
+        }
+
+        /* Reason Bubbles */
+        .reason-bubble {
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            animation: float-bubble 4s infinite ease-in-out;
+            border: 1px solid var(--pink);
+        }
+        @keyframes float-bubble {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        #star-canvas {
+            background: var(--dark-blue);
+            border-radius: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="paper-texture">
+
+    <div id="scroll-progress"></div>
+    <div class="flash" id="screen-flash"></div>
+
+    <!-- Music Player -->
+    <div class="fixed bottom-6 right-6 z-[1000] flex items-center space-x-3 bg-white/60 backdrop-blur-md p-3 rounded-full shadow-lg border border-white/40">
+        <div id="visualizer" class="flex items-end h-[20px]">
+            <div class="visualizer-bar" style="animation-delay: 0.1s"></div>
+            <div class="visualizer-bar" style="animation-delay: 0.3s"></div>
+            <div class="visualizer-bar" style="animation-delay: 0.2s"></div>
+            <div class="visualizer-bar" style="animation-delay: 0.4s"></div>
+        </div>
+        <button id="music-toggle" class="text-xs font-bold uppercase tracking-widest text-[#4a3f35]">
+            Play Ambient
+        </button>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <h1 class="text-5xl md:text-7xl mb-4 text-[#c5a059]">A Promise for Betu</h1>
+        <p class="handwritten text-2xl md:text-3xl opacity-80 mb-12">Mera Baccha, this is just the beginning...</p>
+        
+        <div class="finger-container" id="interaction-zone">
+            <div class="finger" id="3d-finger"></div>
+            <svg id="paper-ring" width="80" height="80" viewBox="0 0 100 100">
+                <path d="M20,50 Q20,30 50,30 Q80,30 80,50 Q80,70 50,70 Q20,70 20,50" fill="none" stroke="#e5e7eb" stroke-width="8" />
+                <path d="M20,50 Q20,30 50,30 Q80,30 80,50" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4 2" />
+                <g transform="translate(50, 25)">
+                    <circle r="12" fill="#f4dcd6" />
+                    <path d="M-8,-2 Q0,-12 8,-2 Q15,5 0,12 Q-15,5 -8,-2" fill="#c5a059" opacity="0.6" />
+                    <path d="M-5,-5 L5,5 M5,-5 L-5,5" stroke="white" stroke-width="1" />
+                </g>
+            </svg>
+        </div>
+
+        <button id="ceremony-btn" class="mt-8 px-8 py-3 bg-[#c5a059] text-white rounded-full font-medium shadow-xl hover:bg-[#b08e4d] transition-all transform hover:scale-105 active:scale-95">
+            Slide the Promise
+        </button>
+    </section>
+
+    <!-- Scratch Card Section -->
+    <section class="max-w-2xl mx-auto py-24 px-8 text-center reveal">
+        <h2 class="text-4xl mb-6 text-[#c5a059]">A Hidden Secret</h2>
+        <p class="mb-8 text-sm opacity-60">Scratch the card to reveal a message just for you.</p>
+        <div id="scratch-container">
+            <div class="scratch-reveal-text px-4">
+                <p class="handwritten text-2xl text-[#c5a059]">"You are the only one I want to walk this life with, Betu."</p>
+            </div>
+            <canvas id="scratch-canvas" width="300" height="150"></canvas>
+        </div>
+    </section>
+
+    <!-- Jar of Reasons -->
+    <section class="max-w-4xl mx-auto py-24 px-8 reveal relative min-h-[500px]">
+        <h2 class="text-4xl mb-12 text-center text-[#c5a059]">Reasons Why I Love You</h2>
+        <div id="bubble-container" class="w-full h-[400px] relative overflow-hidden bg-white/20 rounded-3xl">
+            <!-- Bubbles injected by JS -->
+        </div>
+        <div id="reason-display" class="mt-8 h-12 text-center handwritten text-2xl text-[#c5a059]">Pop a bubble to see...</div>
+    </section>
+
+    <!-- Melody Composer -->
+    <section class="max-w-xl mx-auto py-24 px-8 reveal">
+        <div class="text-center mb-10">
+            <h2 class="text-4xl mb-2 text-[#c5a059]">Our Song</h2>
+            <p class="text-sm">Create a melody for us by tapping the tiles.</p>
+        </div>
+        <div class="grid grid-cols-4 gap-4" id="melody-grid">
+            <!-- Grid tiles injected by JS -->
+        </div>
+    </section>
+
+    <!-- Love Notes Jar -->
+    <section class="max-w-2xl mx-auto py-24 px-8 text-center reveal">
+        <h2 class="text-4xl mb-6 text-[#c5a059]">Betu's Jar of Love</h2>
+        <div id="love-jar">
+            <div class="absolute inset-0 flex items-center justify-center text-4xl opacity-20">❤️</div>
+        </div>
+        <div id="jar-message" class="mt-6 h-12 handwritten text-2xl text-[#c5a059]"></div>
+    </section>
+
+    <!-- Baby Pink Tulip Sanctuary -->
+    <section class="max-w-4xl mx-auto py-24 px-8 reveal">
+        <div class="text-center mb-8">
+            <h2 class="text-4xl mb-2 text-[#f9a8d4]">Tulip Sanctuary</h2>
+            <p class="text-sm">Tap anywhere to plant baby pink tulips.</p>
+        </div>
+        <div id="tulip-plot" class="garden-container tulip-sanctuary"></div>
+        <div class="flex justify-between items-center mt-6">
+            <p class="text-sm font-medium">Tulips for Betu: <span id="tulip-count" class="text-[#f9a8d4]">0</span></p>
+            <button onclick="clearPlot('tulip-plot', 'tulip-count')" class="text-xs uppercase tracking-widest opacity-60">Reset Sanctuary</button>
+        </div>
+    </section>
+
+    <!-- Starry Promise Sky -->
+    <section class="max-w-4xl mx-auto py-24 px-8 reveal">
+        <div class="text-center mb-8">
+            <h2 class="text-4xl mb-2 text-[#c5a059]">Starry Promises</h2>
+            <p class="text-sm">Tap the night sky to create a star for every promise.</p>
+        </div>
+        <div class="relative w-full h-[400px]">
+            <canvas id="star-canvas" class="w-full h-full shadow-2xl"></canvas>
+        </div>
+    </section>
+
+    <!-- Future Gallery -->
+    <section class="max-w-5xl mx-auto py-24 px-8 reveal">
+        <h2 class="text-4xl mb-12 text-center text-[#c5a059]">Memories We Haven't Made Yet</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div class="polaroid" style="transform: rotate(-3deg)">
+                <div class="bg-gray-100 aspect-square flex items-center justify-center text-4xl mb-4">🏠</div>
+                <p class="handwritten text-xl text-center">Our First Home</p>
+            </div>
+            <div class="polaroid" style="transform: rotate(2deg)">
+                <div class="bg-gray-100 aspect-square flex items-center justify-center text-4xl mb-4">✈️</div>
+                <p class="handwritten text-xl text-center">Paris Dreams</p>
+            </div>
+            <div class="polaroid" style="transform: rotate(-1deg)">
+                <div class="bg-gray-100 aspect-square flex items-center justify-center text-4xl mb-4">☕</div>
+                <p class="handwritten text-xl text-center">Sunday Mornings</p>
+            </div>
+            <div class="polaroid" style="transform: rotate(4deg)">
+                <div class="bg-gray-100 aspect-square flex items-center justify-center text-4xl mb-4">🐕</div>
+                <p class="handwritten text-xl text-center">A Little Friend</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Closing Letter -->
+    <section class="max-w-2xl mx-auto py-32 px-8 text-center reveal">
+        <div class="bg-white/40 p-12 rounded-lg shadow-inner">
+            <p class="handwritten text-3xl leading-relaxed">
+                Betu,<br><br>
+                Every day with you feels like a page from a story I never want to end. This paper ring is a symbol of my patience, my devotion, and my promise to always choose you.<br><br>
+                Always yours,<br>
+                <span class="text-[#c5a059] block mt-4">Tumhara...</span>
+            </p>
+        </div>
+    </section>
+
+    <footer class="py-12 text-center opacity-40 text-xs tracking-widest uppercase">
+        MADE WITH LOVE &bull; FOR BETU &bull; ALWAYS
+    </footer>
+
+    <audio id="bg-music" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // --- Core Utils ---
+        const $ = (id) => document.getElementById(id);
+        const ctx_s = $('star-canvas').getContext('2d');
+        const audio = $('bg-music');
+        let isCeremonyComplete = false;
+
+        // --- Intersection Observer ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // --- Scroll Progress ---
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            $('scroll-progress').style.width = ((winScroll / height) * 100) + "%";
+        });
+
+        // --- 3D Finger ---
+        const handleMove = (e) => {
+            const rect = $('interaction-zone').getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const rotateX = (y - rect.height / 2) / 10;
+            const rotateY = (x - rect.width / 2) / 10;
+            $('3d-finger').style.transform = `rotateX(${-rotateX}deg) rotateY(${rotateY}deg)`;
+        };
+        $('interaction-zone').addEventListener('mousemove', handleMove);
+        $('interaction-zone').addEventListener('touchmove', handleMove);
+
+        // --- Ceremony Logic ---
+        $('ceremony-btn').addEventListener('click', () => {
+            if (isCeremonyComplete) return;
+            $('paper-ring').classList.add('ring-on');
+            $('ceremony-btn').innerText = "Hold on...";
+            setTimeout(() => {
+                isCeremonyComplete = true;
+                $('screen-flash').classList.add('flash-active');
+                for(let i = 0; i < 60; i++) createPetal();
+                $('ceremony-btn').innerText = "My Forever Promise";
+            }, 2000);
+        });
+
+        function createPetal() {
+            const petal = document.createElement('div');
+            petal.className = 'petal';
+            const size = Math.random() * 15 + 10;
+            Object.assign(petal.style, {
+                width: size + 'px', height: size + 'px',
+                backgroundColor: ['#f4dcd6', '#fbcfe8', '#f87171'][Math.floor(Math.random()*3)],
+                borderRadius: '50% 0 50% 50%',
+                left: Math.random() * 100 + 'vw', top: '-20px'
+            });
+            document.body.appendChild(petal);
+            petal.animate([
+                { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+                { transform: `translate(${Math.random() * 100 - 50}px, 100vh) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+            ], { duration: Math.random() * 3000 + 2000 }).onfinish = () => petal.remove();
+        }
+
+        // --- Scratch Card ---
+        const sc = $('scratch-canvas');
+        const scCtx = sc.getContext('2d');
+        scCtx.fillStyle = '#c0c0c0';
+        scCtx.fillRect(0, 0, 300, 150);
+        scCtx.font = 'bold 20px Quicksand';
+        scCtx.fillStyle = '#999';
+        scCtx.textAlign = 'center';
+        scCtx.fillText('SCRATCH HERE', 150, 85);
+
+        const scratch = (e) => {
+            const rect = sc.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            scCtx.globalCompositeOperation = 'destination-out';
+            scCtx.beginPath();
+            scCtx.arc(x, y, 20, 0, Math.PI * 2);
+            scCtx.fill();
+        };
+        sc.addEventListener('mousemove', (e) => e.buttons === 1 && scratch(e));
+        sc.addEventListener('touchmove', (e) => { e.preventDefault(); scratch(e); });
+
+        // --- Reason Bubbles ---
+        const reasons = [
+            "Your smile", "Your kind soul", "How you care", "Your silly jokes",
+            "Your strength", "Your patience", "Your intelligence", "Just being you"
+        ];
+        const container = $('bubble-container');
+        reasons.forEach((text, i) => {
+            const b = document.createElement('div');
+            b.className = 'reason-bubble';
+            const size = 70 + Math.random() * 40;
+            Object.assign(b.style, {
+                width: size + 'px', height: size + 'px',
+                left: Math.random() * 80 + 5 + '%',
+                top: Math.random() * 70 + 5 + '%',
+                animationDelay: (i * 0.5) + 's'
+            });
+            b.innerHTML = '<span class="text-xs font-bold text-[#c5a059]">POP ME</span>';
+            b.onclick = () => {
+                b.style.transform = 'scale(1.5)';
+                b.style.opacity = '0';
+                $('reason-display').innerText = text;
+                setTimeout(() => b.remove(), 300);
+            };
+            container.appendChild(b);
+        });
+
+        // --- Melody Grid ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const playTone = (freq) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1);
+        };
+
+        const freqs = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+        const grid = $('melody-grid');
+        for(let i=0; i<16; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'melody-tile';
+            tile.onclick = () => playTone(freqs[i % freqs.length]);
+            grid.appendChild(tile);
+        }
+
+        // --- Starry Sky ---
+        const stars = [];
+        const resize = () => { 
+            $('star-canvas').width = $('star-canvas').offsetWidth; 
+            $('star-canvas').height = $('star-canvas').offsetHeight; 
+        };
+        window.onresize = resize; resize();
+
+        const draw = () => {
+            ctx_s.clearRect(0, 0, sc.width * 2, sc.height * 5); // Canvas clearing
+            stars.forEach(s => {
+                ctx_s.beginPath();
+                ctx_s.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx_s.fillStyle = `rgba(255,255,255,${s.o})`;
+                ctx_s.fill();
+                s.o += s.d;
+                if(s.o > 1 || s.o < 0.2) s.d *= -1;
+            });
+            requestAnimationFrame(draw);
+        };
+        draw();
+
+        $('star-canvas').onclick = (e) => {
+            const rect = $('star-canvas').getBoundingClientRect();
+            stars.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, r: Math.random()*2+1, o: 1, d: -0.01 });
+        };
+
+        // --- Gardens ---
+        const plant = (cId, nId, emoji) => {
+            $(cId).onclick = (e) => {
+                const rect = $(cId).getBoundingClientRect();
+                const f = document.createElement('span');
+                f.innerText = emoji;
+                f.className = 'absolute text-3xl select-none transition-transform scale-0';
+                f.style.left = (e.clientX - rect.left - 15) + 'px';
+                f.style.top = (e.clientY - rect.top - 15) + 'px';
+                $(cId).appendChild(f);
+                setTimeout(() => f.style.transform = 'scale(1)', 10);
+                $(nId).innerText = parseInt($(nId).innerText) + 1;
+            };
+        };
+        plant('tulip-plot', 'tulip-count', '🌷');
+
+        function clearPlot(id, nId) { $(id).innerHTML = ''; $(nId).innerText = '0'; }
+
+        // --- Music ---
+        $('music-toggle').onclick = () => {
+            if(audio.paused) { 
+                audio.play(); 
+                $('visualizer').classList.add('animating'); 
+                $('music-toggle').innerText = "Pause";
+            } else { 
+                audio.pause(); 
+                $('visualizer').classList.remove('animating'); 
+                $('music-toggle').innerText = "Play"; 
+            }
+        };
+
+        // --- Love Jar ---
+        const notes = ["Mera Baccha", "You are magic", "My forever", "I love you", "Stay mine", "You are home"];
+        $('love-jar').onclick = () => {
+            const h = document.createElement('div');
+            h.innerText = '❤️';
+            h.className = 'floating-heart text-2xl';
+            h.style.left = '45%'; h.style.top = '40%';
+            $('love-jar').appendChild(h);
+            setTimeout(() => h.remove(), 2000);
+            $('jar-message').innerText = notes[Math.floor(Math.random()*notes.length)];
+        };
+
+    </script>
+</body>
+</html>
